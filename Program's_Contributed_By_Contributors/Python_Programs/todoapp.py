@@ -1,6 +1,13 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QLineEdit, QPushButton, QListView
-from PySide6.QtCore import QStringListModel
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QLineEdit, QPushButton, QListView, QHBoxLayout, QCheckBox, QStyledItemDelegate
+from PySide6.QtCore import QStringListModel, Qt
+
+class TaskDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        task = index.data(Qt.DisplayRole)
+        if "✔" in task:
+            option.font.setStrikeOut(True)
+        super().paint(painter, option, index)
 
 class TodoListApp(QMainWindow):
     def __init__(self):
@@ -18,6 +25,7 @@ class TodoListApp(QMainWindow):
         self.task_list = QListView()
         self.task_list.setEditTriggers(QListView.NoEditTriggers)
         self.task_list.setSelectionMode(QListView.SingleSelection)
+        self.task_list.setItemDelegate(TaskDelegate())
         self.layout.addWidget(self.task_list)
         self.label = QLabel("Enter a task:")
         self.layout.addWidget(self.label)
@@ -33,24 +41,35 @@ class TodoListApp(QMainWindow):
         self.remove_button.clicked.connect(self.remove_task)
         self.layout.addWidget(self.remove_button)
 
+        self.mark_completed_button = QPushButton("Mark as Completed")
+        self.mark_completed_button.clicked.connect(self.mark_task_completed)
+        self.layout.addWidget(self.mark_completed_button)
+
         self.update_task_list()
 
     def add_task(self):
         task = self.task_input.text()
         if task:
-            self.tasks.append(task)
+            self.tasks.append((task, False))
             self.task_input.clear()
             self.update_task_list()
 
     def remove_task(self):
         selected_index = self.task_list.currentIndex()
         if selected_index.isValid():
-            task = self.tasks[selected_index.row()]
-            self.tasks.remove(task)
+            del self.tasks[selected_index.row()]
+            self.update_task_list()
+
+    def mark_task_completed(self):
+        selected_index = self.task_list.currentIndex()
+        if selected_index.isValid():
+            task, completed = self.tasks[selected_index.row()]
+            self.tasks[selected_index.row()] = (task, not completed)
             self.update_task_list()
 
     def update_task_list(self):
-        self.task_list.setModel(QStringListModel(self.tasks))
+        formatted_tasks = [f"✔ {task}" if completed else task for task, completed in self.tasks]
+        self.task_list.setModel(QStringListModel(formatted_tasks))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
